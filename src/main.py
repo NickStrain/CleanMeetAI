@@ -23,7 +23,7 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 
 def generate_frames():
-    camera =cv2.VideoCapture('udp://127.0.0.1:80', cv2.CAP_FFMPEG) 
+    camera =cv2.VideoCapture(0) 
     if not camera.isOpened():
         raise RuntimeError("Could not start camera.")
     while True:
@@ -37,12 +37,12 @@ def generate_frames():
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 
-@app.api_route("/", methods=["GET", "POST"])
+@app.get("/")
 def index(request:Request):
     context = {"request":request}
     return templates.TemplateResponse("index.html",context=context)
 
-@app.api_route("/video", methods=["GET", "POST"])
+@app.get("/video")
 def video():
     return StreamingResponse(generate_frames(), media_type='multipart/x-mixed-replace; boundary=frame')
 
