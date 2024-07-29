@@ -37,8 +37,8 @@ body, html {
 }
 
 .video-container {
-    width: 640px;
-    height: 480px;
+    width: 800px;
+    height: 800px;
     background-color: #000;
     margin-bottom: 10px;
 }
@@ -72,11 +72,11 @@ body, html {
 
 .chat-window {
     position: absolute;
-    bottom: 50px;
-    right: 20px;
-    width: 300px;
-    height: 400px;
-    background-color: white;
+    bottom: 350px;
+    right: 100px;
+    width: 500px;
+    height: 850px;
+    background-color: rgb(252, 252, 252);
     border: 1px solid #ccc;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     display: flex;
