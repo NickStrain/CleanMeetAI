@@ -1,6 +1,7 @@
-fastapi
+fastapi== 0.111.1
 uvicorn 
 jinja2
 opencv-python
 numpy
-  
+transformers
+Pillow

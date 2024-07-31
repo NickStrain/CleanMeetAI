@@ -59,3 +59,23 @@ document.getElementById('chat-input').addEventListener('keypress', function(even
         document.getElementById('send-button').click();
     }
 });
+const url = 'http://localhost/output';
+
+// Use the Fetch API to get the response
+fetch(url)
+    .then((response) => {
+        // Check if the response is OK (status in the range 200-299)
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        // Parse the JSON from the response
+        return response.json();
+    })
+    .then((data) => {
+        // Process the data here
+        console.log(data); // Log the data to the console
+    })
+    .catch((error) => {
+        // Handle any errors
+        console.error('There has been a problem with your fetch operation:', error);
+    });

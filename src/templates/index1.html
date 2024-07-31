@@ -1,9 +1,22 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <title>FastAPI HTML Response</title>
-    </head>
-    <body>
-        <h1>Webcam</h1>
-       <img src="{{ url_for('video') }}" width="800" />
-    </body>
+<head>
+    <title>NSFW</title>
+</head>
+<body>
+    <h1>Real-Time NSFW </h1>
+    <div id="output"></div>
+    <script>
+        const ws = new WebSocket('ws://localhost:80/ws');
+
+        ws.onmessage = function(event) {
+            const jsonObject = JSON.parse(event.data);
+            document.getElementById('output').innerHTML = `<p>${JSON.stringify(jsonObject)}</p>`;
+        };
+
+        ws.onerror = function() {
+            console.error('WebSocket error.');
+        };
+    </script>
+</body>
 </html>

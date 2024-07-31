@@ -1,18 +1,16 @@
 import cv2
 
-
-def cam():
-    # Open a video capture
-    cap = cv2.VideoCapture('udp://127.0.0.1:80',cv2.CAP_FFMPEG)  # 0 for default camera
-
-
+def generate_frames():
+    camera = cv2.VideoCapture(0)  
+    if not camera.isOpened():
+        raise RuntimeError("Could not start camera.")
     while True:
-        ret, frame = cap.read()
-
-       
-        if not ret:
+        success, frame = camera.read()
+        if not success:
             break
+        else:
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-
-if __name__ == '__main__':
-    cam()

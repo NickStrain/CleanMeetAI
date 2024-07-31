@@ -15,3 +15,6 @@ or
 sudo apt-get update
 sudo apt-get install -y libqt5widgets5 libqt5gui5 libqt5core5a
 pip install opencv-python opencv-python-headless opencv-contrib-python
+
+
+camera =cv2.VideoCapture('udp://127.0.0.1:80', cv2.CAP_FFMPEG) 

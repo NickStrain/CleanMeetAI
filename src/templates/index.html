@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Call</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
 </head>
 <body>
     <!-- First Page -->
     <div id="start-page" class="page">
-        <h1>Welcome to the Video Call</h1>
+        <h1>Welcome to the Video Call</h1>/static/styles.css"
         <button id="start-button" class="primary-button">Start Meeting</button>
     </div>
 
@@ -29,7 +29,50 @@
             <button id="send-button" class="control-button">Send</button>
         </div>
     </div>
+    
+    <!-- <script src="{{ url_for('static', path='script.js') }}" ></script> -->
+    <script>
+       
 
-    <script src="script.js"></script>
+// Use the Fetch API to get the response
+  
+// let ans;
+// async function samm(){
+//     const url = 'http://localhost/output';
+//     const res= await fetch(url);
+//     console.log(res);
+// }
+// fetch(url)
+//     .then((response) => {
+//         // Check if the response is OK (status in the range 200-299)
+//         if (!response.ok) {
+//             throw new Error('Network response was not ok ' + response.statusText);
+//         }
+//         // Parse the JSON from the response
+//         return response.json();
+//     })
+//     .then((data) => {
+//         // Process the data here
+//         console.log(data); // Log the data to the console
+//     })
+//     .catch((error) => {
+//         // Handle any errors
+//         console.error('There has been a problem with your fetch operation:', error);
+//     });
+//     alert("sdf")
+
+// samm();
+const eventSource = new EventSource('http://localhost:80/output');
+
+        eventSource.onmessage = function(event) {
+            const messageDiv = document.getElementById('messages');
+            messageDiv.innerHTML += `<p>${event.data}</p>`;
+            console.log(event.data)
+        };
+
+        eventSource.onerror = function() {
+            console.error('EventSource failed.');
+        };
+    </script>
 </body>
 </html>
