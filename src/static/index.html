@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- First Page -->
+    <div id="start-page" class="page">
+        <h1>Welcome to the Video Call</h1>
+        <button id="start-button" class="primary-button">Start Meeting</button>
+    </div>
+
+    <!-- Second Page -->
+    <div id="meeting-page" class="page hidden">
+        <div class="video-container">
+            <img src="http://localhost/video" width="800" />
+                
+        </div>
+        <div class="controls">
+            <button id="audio-button" class="control-button">Mute</button>
+            <button id="chat-toggle-button" class="control-button">Chat</button>
+            <button id="end-button" class="primary-button">End Meeting</button>
+        </div>
+        <div id="chat-window" class="chat-window hidden">
+            <div id="chat-messages"></div>
+            <input type="text" id="chat-input" placeholder="Type a message...">
+            <button id="send-button" class="control-button">Send</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
