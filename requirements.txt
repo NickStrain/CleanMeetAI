@@ -5,4 +5,4 @@ opencv-python
 numpy
 transformers
 Pillow
-$ pip install torch==2.3.1
+torch==2.3.1
