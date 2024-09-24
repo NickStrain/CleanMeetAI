@@ -1,16 +1,16 @@
 import torch
 from PIL import Image
-from transformers import AutoModelForImageClassification, ViTImageProcessor   
+from transformers import AutoModelForImageClassification, ViTImageProcessor ,pipeline,Speech2TextProcessor, Speech2TextForConditionalGeneration
 from PIL import Image
-from transformers import pipeline
-from PIL import Image
+from fastapi import WebSocket, WebSocketDisconnect
 import numpy as np
-
 import os
-
-
-
-
+import soundfile as sf
+import io
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+model_id = "distil-whisper/distil-medium.en"
 class nsfwModel():
     '''
     This is the class for nsfw model and the pipline for the model 
@@ -23,44 +23,58 @@ class nsfwModel():
 
     def predict(self,X):
 
-        inputs = self.processor(images=X, return_tensors="pt")
-        outputs = self.model(**inputs)
+        input_features = self.processor(images=X, return_tensors="pt")
+        outputs = self.model(**input_features)
         logits = outputs.logits
         predicted_label = logits.argmax(-1).item()
         return self.model.config.id2label[predicted_label]
+    
 
-# import cv2 
-# img  = cv2.imread(r"C:\\Users\shuga\\Pictures\\josh-nuttall-xl2piFfdzyA-unsplash.jpg", cv2.IMREAD_COLOR)
-# image = Image.open(r"C:\\Users\shuga\\Pictures\\josh-nuttall-xl2piFfdzyA-unsplash.jpg")
-# model  = nsfwModel()
+class speech2text():
+    '''
+    This class is for the speech2text
 
-# # print(img)
-# print(model.predict(image))
+    '''
+    def __init__(self) -> None:
+        self.model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True).to(device)
+        self.processor = AutoProcessor.from_pretrained(model_id)
+        self.pipe = pipeline("automatic-speech-recognition",model=self.model,
+                                    tokenizer=self.processor.tokenizer,
+                                    feature_extractor=self.processor.feature_extractor,
+                                    max_new_tokens=128,
+                                    torch_dtype=torch_dtype,
+                                    device=device,)
 
-        
-        
-
-# Use a pipeline as a high-level helper
-# from PIL import Image
-# from transformers import pipeline
-
-# img = Image.open(r"C:\\Users\shuga\\Pictures\\josh-nuttall-xl2piFfdzyA-unsplash.jpg")
-# classifier = pipeline("image-classification", model="Falconsai/nsfw_image_detection")
-# classifier(img)
+    def predict(self,X):
+        res = self.pipe(X)
+        return res
 
 
-# Load model directly
-# import torch
-# from PIL import Image
-# from transformers import AutoModelForImageClassification, ViTImageProcessor
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
 
-# img = Image.open(r"C:\\Users\shuga\Downloads\\my-milf-pussy-is-just-so-lonely-here-in-the-backseat-all-v0-ey5l5sym8gfd1.webp")
-# model = AutoModelForImageClassification.from_pretrained("Falconsai/nsfw_image_detection")
-# processor = ViTImageProcessor.from_pretrained('Falconsai/nsfw_image_detection')
-# with torch.no_grad():
-#     inputs = processor(images=img, return_tensors="pt")
-#     outputs = model(**inputs)
-#     logits = outputs.logits
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
 
-# predicted_label = logits.argmax(-1).item()
-# print(model.config.id2label[predicted_label])
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_transcript(self, websocket: WebSocket, message: str):
+        await websocket.send_text(message)
+
+# model = Speech2TextForConditionalGeneration.from_pretrained("facebook/s2t-medium-mustc-multilingual-st")
+# processor = Speech2TextProcessor.from_pretrained("facebook/s2t-medium-mustc-multilingual-st")
+# if __name__ == "__main__":
+#     from datasets import load_dataset
+#     import soundfile as sf
+#     def map_to_array(batch):
+#         speech, _ = sf.read(batch["file"])
+#         batch["speech"] = speech
+#         return batch
+
+#     ds = load_dataset("patrickvonplaten/librispeech_asr_dummy", "clean", split="validation")
+#     ds = ds.map(map_to_array)
+
+#     print(ds["speech"][0])

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder</title>
+</head>
+<body>
+    <h1>Audio Recorder and Player</h1>
+    <button id="startButton">Start Recording</button>
+    <button id="stopButton" disabled>Stop Recording</button>
+    <audio id="audioPlayer" controls></audio>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let socket;
+
+        document.getElementById("startButton").addEventListener("click", async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                // Create Blob from the recorded audio chunks
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                
+                // Create WebSocket connection to FastAPI backend
+                socket = new WebSocket("ws://localhost:80/wsaudio");
+
+                socket.onopen = () => {
+                    // When the connection opens, send the recorded audio Blob
+                    socket.send(audioBlob);
+                    console.log("Audio sent to server.");
+                };
+
+                // Handle response from the server (received audio to be played)
+                socket.onmessage = async event => {
+                    const audioBlob = new Blob([event.data], { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    const audioPlayer = document.getElementById("audioPlayer");
+                    audioPlayer.src = audioUrl;
+                    audioPlayer.play();
+                    console.log("Playing received audio.");
+                };
+
+                socket.onclose = () => {
+                    console.log("Connection closed.");
+                };
+            };
+
+            // Start recording audio
+            mediaRecorder.start();
+            document.getElementById("startButton").disabled = true;
+            document.getElementById("stopButton").disabled = false;
+        });
+
+        document.getElementById("stopButton").addEventListener("click", () => {
+            // Stop the audio recording
+            mediaRecorder.stop();
+            document.getElementById("startButton").disabled = false;
+            document.getElementById("stopButton").disabled = true;
+        });
+    </script>
+</body>
+</html>
