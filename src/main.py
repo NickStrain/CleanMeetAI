@@ -1,20 +1,24 @@
 import cv2
-from fastapi import FastAPI, Request,BackgroundTasks,WebSocket
+from fastapi import FastAPI, Request,BackgroundTasks,WebSocket,WebSocketDisconnect,UploadFile,File
 import numpy as np
 import asyncio
 from PIL import Image
 from fastapi.responses import StreamingResponse
-
 import json
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 import sys
+import io
+import soundfile as sf
 # from videostream import generate_frames
-from model_pipline import nsfwModel
+from model_pipline import nsfwModel,ConnectionManager
+from transformers import pipeline
 import time
 app = FastAPI()
+buffer_manager =  ConnectionManager()
 origins = [
+
     "http://localhost.tiangolo.com",
     "https://localhost.tiangolo.com",
     "http://localhost",
@@ -82,6 +86,8 @@ async def websocket_endpoint(websocket: WebSocket):
         out = json.dumps({"pre":i})
         await websocket.send_text(out)
         await asyncio.sleep(1)
+
+speech2text_model = pipeline("automatic-speech-recognition", model="facebook/wav2vec2-large-960h")
 
 
 # for i in pre():
