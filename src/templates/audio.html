@@ -37,6 +37,7 @@
                 // When the connection opens, send the recorded audio Blob
                 socket.send(audioBlob);
                 console.log("Audio sent to server.");
+                audioChunks = []
             };
 
             
@@ -50,6 +51,10 @@
         mediaRecorder.start();
         document.getElementById("startButton").disabled = true;
         document.getElementById("stopButton").disabled = false;
+        intervelid = setInterval(async() =>{
+            mediaRecorder.stop();
+            mediaRecorder.start();
+        },5000);
     } catch (err) {
         console.error("Error starting audio recording:", err);
     }
@@ -57,7 +62,7 @@
 
 document.getElementById("stopButton").addEventListener("click", () => {
     // Stop the audio recording
-    mediaRecorder.stop();
+    clearInterval(intervalId);
     document.getElementById("startButton").disabled = false;
     document.getElementById("stopButton").disabled = true;
    
