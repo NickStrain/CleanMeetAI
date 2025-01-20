@@ -7,6 +7,8 @@ import numpy as np
 import os
 import soundfile as sf
 import io
+from transformers import pipeline
+from transformers import AutoTokenizer,AutoModelForSequenceClassification
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -48,7 +50,22 @@ class speech2text():
     def predict(self,X):
         res = self.pipe(X)
         return res
+class Textclassifier():
+    def __init__(self) -> None:
+        '''
+        init all the args from the HF :);
+        '''
+        self.tokenizer = AutoTokenizer.from_pretrained("JungleLee/bert-toxic-comment-classification")
+        self.model = AutoModelForSequenceClassification.from_pretrained("JungleLee/bert-toxic-comment-classification")
+        self.pipe = pipeline("text-classification", model="JungleLee/bert-toxic-comment-classification")
+    def pred(self,x) -> any  :
+        '''
+        Predict function:
+        x: Input value 
+        '''
+        a  = self.pipe(x)
 
+        return a
 
 class ConnectionManager:
     def __init__(self):
