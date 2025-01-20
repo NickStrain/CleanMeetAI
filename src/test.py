@@ -14,12 +14,7 @@ app.add_middleware(
 )
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-speech_to_text = pipeline(
-  "automatic-speech-recognition",
-  model="openai/whisper-small",
-  chunk_length_s=30,
-  device=device,
-)
+pipe = pipeline("automatic-speech-recognition", model="openai/whisper-base.en")
 
 @app.websocket("/wsaudio")
 async def websocket_audio(websocket: WebSocket):
@@ -28,8 +23,9 @@ async def websocket_audio(websocket: WebSocket):
     try:
         audio_data = await websocket.receive_bytes()
         # transcript = speech_to_text(audio_data)["text"]
-        transcript = speech_to_text(audio_data,batch_size = 8)["text"]
+        transcript = pipe(audio_data)
         print(transcript,flush=True)
+       
         
 
         

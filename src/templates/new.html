@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Real-time Speech to Text</title>
+    <style>
+        #output {
+            width: 100%;
+            height: 200px;
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-time Speech to Text</h1>
+    <button id="startButton">Start Recording</button>
+    <button id="stopButton" disabled>Stop Recording</button>
+    <div id="output"></div>
+
+    <script>
+        let mediaRecorder;
+        let socket;
+        let isRecording = false;
+        
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const output = document.getElementById('output');
+
+        // Initialize WebSocket connection
+        function connectWebSocket() {
+            socket = new WebSocket('ws://localhost:80/wsaudio');
+            
+            socket.onmessage = function(event) {
+                output.innerHTML += `<p>${event.data}</p>`;
+                output.scrollTop = output.scrollHeight;
+            };
+            
+            socket.onerror = function(error) {
+                console.error('WebSocket Error:', error);
+            };
+            
+            socket.onclose = function() {
+                console.log('WebSocket Connection Closed');
+            };
+        }
+
+        // Start recording
+        startButton.onclick = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                connectWebSocket();
+                isRecording = true;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+
+                mediaRecorder.ondataavailable = async (event) => {
+                    
+                        // Convert blob to base64
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            socket.send(reader.result);
+                        };
+                        reader.readAsDataURL(event.data);
+                    
+                };
+
+                mediaRecorder.start(1000); // Capture in 1-second intervals
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+            }
+        };
+
+        // Stop recording
+        stopButton.onclick = () => {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                socket.close();
+                isRecording = false;
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        };
+    </script>
+</body>
+</html>
