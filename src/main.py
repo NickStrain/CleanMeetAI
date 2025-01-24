@@ -1,4 +1,5 @@
 import cv2
+import threading
 from fastapi import FastAPI, Request,BackgroundTasks,WebSocket,WebSocketDisconnect,UploadFile,File
 import numpy as np
 import asyncio
@@ -37,25 +38,49 @@ app.add_middleware(
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+class CameraManager:
+    def __init__(self):
+        self.camera = cv2.VideoCapture(0)
+        if not self.camera.isOpened():
+            raise RuntimeError("Could not open camera.")
+        self.lock = threading.Lock()
+        self.latest_frame = None
+        self.running = True
+        self.thread = threading.Thread(target=self._capture_frames, daemon=True)
+        self.thread.start()
+
+    def _capture_frames(self):
+        while self.running:
+            success, frame = self.camera.read()
+            if success:
+                with self.lock:
+                    self.latest_frame = frame
+
+    def get_frame(self):
+        with self.lock:
+            return self.latest_frame
+
+    def stop(self):
+        self.running = False
+        self.thread.join()
+        self.camera.release()
+
+# Create a shared camera manager instance
+camera_manager = CameraManager()
+
 def generate_cam_frame():
-    camera =cv2.VideoCapture(0) 
-    if not camera.isOpened():
-        raise RuntimeError("Could not start camera.")
+   
     while True:
-        success, frame = camera.read()
-        if not success:
-            break
-        else:
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame = buffer.tobytes()
-            yield (b'--frame\r\n'
+        frame = camera_manager.get_frame()
+        ret, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
+        yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
             
 def video_pre(model):
     model = model
-    camera = cv2.VideoCapture(0)
     while True:
-        success,frame = camera.read()
+        frame = camera_manager.get_frame()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frame =  Image.fromarray(frame)
         out = model.predict(frame)
