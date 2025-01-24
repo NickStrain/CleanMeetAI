@@ -15,7 +15,7 @@ app.add_middleware(
 )
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-pipe = pipeline("automatic-speech-recognition", model="openai/whisper-base.en")
+pipe = pipeline("automatic-speech-recognition", model="openai/whisper-small.en")
 text_cl_model= Textclassifier()
 @app.websocket("/wsaudio")
 async def websocket_audio(websocket: WebSocket):

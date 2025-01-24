@@ -33,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -63,8 +64,6 @@ def video_pre(model):
         yield f"{json_output}\n"
         time.sleep(1) 
 
-        
-    
 
 @app.get("/")
 def index(request:Request):
