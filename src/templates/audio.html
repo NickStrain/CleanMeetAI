@@ -31,7 +31,7 @@
             let audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             
             // Create WebSocket connection to FastAPI backend
-            socket = new WebSocket("ws://localhost:80/wsaudio");
+            socket = new WebSocket("ws://localhost:90/wsaudio");
 
             socket.onopen = () => {
                 // When the connection opens, send the recorded audio Blob

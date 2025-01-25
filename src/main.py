@@ -87,7 +87,7 @@ def video_pre(model):
         json_output = json.dumps({"prediction": out})
         sys.stdout.flush()
         yield f"{json_output}\n"
-        time.sleep(1) 
+        # time.sleep(1) 
 
 
 @app.get("/")
