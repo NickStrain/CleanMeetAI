@@ -6,88 +6,82 @@ import asyncio
 from PIL import Image
 from fastapi.responses import StreamingResponse
 import json
+from model_pipline import Textclassifier
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from transformers import pipeline
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 import sys
 import io
+from io import BytesIO
 import soundfile as sf
 # from videostream import generate_frames
 from model_pipline import nsfwModel,ConnectionManager
 from transformers import pipeline
 import time
+from pydub import AudioSegment
+
 app = FastAPI()
 buffer_manager =  ConnectionManager()
-origins = [
+app = FastAPI()
 
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
-    "http://localhost",
-    "http://localhost:80",
-]
-
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Allow all origins (replace with specific origins for more security)
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-class CameraManager:
-    def __init__(self):
-        self.camera = cv2.VideoCapture(0)
-        if not self.camera.isOpened():
-            raise RuntimeError("Could not open camera.")
-        self.lock = threading.Lock()
-        self.latest_frame = None
-        self.running = True
-        self.thread = threading.Thread(target=self._capture_frames, daemon=True)
-        self.thread.start()
+nsfw_model = nsfwModel()
+pipe = pipeline("automatic-speech-recognition", model="openai/whisper-small.en")
+text_cl_model= Textclassifier()
 
-    def _capture_frames(self):
-        while self.running:
-            success, frame = self.camera.read()
-            if success:
-                with self.lock:
-                    self.latest_frame = frame
+def detect_nsfw_video(image: Image.Image) -> dict:
+    image = image.convert("RGB")
+    predictions = nsfw_model.predict(image)
+    return predictions
 
-    def get_frame(self):
-        with self.lock:
-            return self.latest_frame
+def process_audio(file: BytesIO):
+    audio = AudioSegment.from_file(file, format="wav")  # Load the audio file using pydub
+    audio = audio.set_channels(1)  # Set to mono
+    audio = audio.set_frame_rate(16000)
 
-    def stop(self):
-        self.running = False
-        self.thread.join()
-        self.camera.release()
+    # Load the audio file using soundfile (can handle various formats)
+    wav_io = io.BytesIO()
+    audio.export(wav_io, format="wav")
+    wav_io.seek(0)  # Reset buffer position for reading
 
-# Create a shared camera manager instance
-camera_manager = CameraManager()
+    # Now, try reading with soundfile
+    
+    data, samplerate = sf.read(wav_io)
+    # Use Whisper to transcribe the audio into text
+    transcription = pipe(audio_data)["text"]
+    return transcription
 
-def generate_cam_frame():
-   
-    while True:
-        frame = camera_manager.get_frame()
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            
-def video_pre(model):
-    model = model
-    while True:
-        frame = camera_manager.get_frame()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame =  Image.fromarray(frame)
-        out = model.predict(frame)
-        json_output = json.dumps({"prediction": out})
-        sys.stdout.flush()
-        yield f"{json_output}\n"
-        # time.sleep(1) 
+@app.post("/detect-nsfw")
+async def detect_nsfw_endpoint(file: UploadFile):
+    image_data = await file.read()
+    image = Image.open(BytesIO(image_data))
+    predictions = detect_nsfw_video(image) 
+    # print(predictions,flush = True)
+    return predictions
+
+@app.post("/detect-audio")
+async def detect_audio_endpoint(file: UploadFile):
+    audio_data = await file.read()
+    
+    # Process the audio (transcribe and classify)
+    transcription = process_audio(BytesIO(audio_data))
+    print(transcription,flush= True)
+    pred = text_cl_model.pred(transcript) 
+    return pred
 
 
 @app.get("/")
@@ -114,16 +108,28 @@ async def websocket_endpoint(websocket: WebSocket):
 speech2text_model = pipeline("automatic-speech-recognition", model="facebook/wav2vec2-large-960h")
 
 
-# for i in pre():
-#     print("sdf",i)
-#     time.sleep(2)
 
+@app.websocket("/wsaudio")
+async def websocket_audio(websocket: WebSocket):
+    await websocket.accept()
 
+    try:
+        while True:
+            # Receive audio data from client
+            audio_data = await websocket.receive_bytes()
 
-# camera =cv2.VideoCapture('udp://127.0.0.1:80', cv2.CAP_FFMPEG) 
+            # Process audio with Whisper (speech-to-text)
+            transcript = pipe(audio_data)
 
-# while True:
-#     success,frame = camera.read()
-#     print(frame)
+            # Run text classification for offensive content detection
+            pred = text_cl_model.pred(transcript["text"])
+            print(pred[0]['label'],flush=True)
 
-
+            await websocket.send_text(pred[0]['label'],)
+            # Send response back to client if needed (for real-time updates)
+            # (Optional: return offensive/NSFW detection result to the frontend)
+    except Exception as e:
+        print(f"Error: {e}")
+    
+    finally:
+        await websocket.close()

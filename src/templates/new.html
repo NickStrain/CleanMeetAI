@@ -1,186 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Call</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        .hidden { display: none; }
-        .video-container img {
-            max-width: 100%;
-            height: auto;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time NSFW Detection (Video + Audio)</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: Arial, sans-serif;
+    }
+    video {
+      border: 2px solid #333;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 1.5rem;
+    }
+    #status1 {
+      margin-top: 20px;
+      font-size: 1.5rem;
+    }
+  </style>
 </head>
-<body class="bg-gray-100">
-    <!-- First Page -->
-    <div id="start-page" class="min-h-screen flex flex-col justify-center items-center">
-        <div class="text-center bg-white p-8 rounded-lg shadow-md">
-            <h1 class="text-3xl font-bold mb-6 text-gray-800">Welcome to the Video Call</h1>
-            <button id="start-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                Start Meeting
-            </button>
-        </div>
-    </div>
+<body>
+  <h1>Real-Time NSFW Detection (Video + Audio)</h1>
+  <video id="video" autoplay muted></video>
+  <canvas id="canvas" hidden></canvas>
+  <div id="status">Waiting for detection...</div>
+  <div id="status1">Waiting for detection...</div>
+  <button id="startButton">Start Recording</button>
+  <button id="stopButton" disabled>Stop Recording</button>
 
-    <!-- Second Page -->
-    <div id="meeting-page" class="hidden min-h-screen flex flex-col">
-        <div class="flex-grow container mx-auto p-4">
-            <div class="video-container mb-4">
-                <img src="http://localhost/video" class="w-full rounded-lg shadow-md" alt="Video Stream" />
-            </div>
-            
-            <div class="controls flex justify-center space-x-4 mb-4">
-                <button id="audio-button" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                    Mute
-                </button>
-                <button id="chat-toggle-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                    Chat
-                </button>
-                <button id="end-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                    End Meeting
-                </button>
-            </div>
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const statusDiv = document.getElementById("status");
+    const status1Div = document.getElementById("status1");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
 
-            <div id="chat-window" class="hidden bg-white rounded-lg shadow-md p-4">
-                <div id="chat-messages" class="h-64 overflow-y-auto mb-4 border-b pb-2">
-                    <!-- Chat messages will appear here -->
-                </div>
-                <div class="flex">
-                    <input 
-                        type="text" 
-                        id="chat-input" 
-                        placeholder="Type a message..." 
-                        class="flex-grow mr-2 p-2 border rounded"
-                    >
-                    <button 
-                        id="send-button" 
-                        class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300"
-                    >
-                        Send
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    let mediaRecorder;
+    let audioChunks = [];
+    let socket;
+    let intervalId;
 
-    <script>
-        // Page Navigation
-        const startPage = document.getElementById('start-page');
-        const meetingPage = document.getElementById('meeting-page');
-        const startButton = document.getElementById('start-button');
+    // Initialize video and WebSocket stream
+    async function startStream() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        video.srcObject = stream;
 
-        // Meeting Controls
-        const audioButton = document.getElementById('audio-button');
-        const chatToggleButton = document.getElementById('chat-toggle-button');
-        const endButton = document.getElementById('end-button');
+        // Create WebSocket connection to FastAPI backend
+        socket = new WebSocket("ws://localhost:8000/wsaudio");
 
-        // Chat Elements
-        const chatWindow = document.getElementById('chat-window');
-        const chatMessages = document.getElementById('chat-messages');
-        const chatInput = document.getElementById('chat-input');
-        const sendButton = document.getElementById('send-button');
+        socket.onopen = () => {
+          console.log("WebSocket connected.");
+        };
+        socket.onmessage = (event) => {
+      console.log("Message received from server:", event.data);
+      if (event.data === "toxic") {
+        status1Div.textContent = "⚠️ Offensive Audio Detected! ";
+        status1Div.style.color = "red";
+      } else {
+        status1Div.textContent = "✅ Audio is Safe";
+        status1Div.style.color = "green";
+      }
 
-        // WebSocket for signaling
-        let socket;
+    
+    };
 
-        // Start Meeting
-        startButton.addEventListener('click', () => {
-            startPage.classList.add('hidden');
-            meetingPage.classList.remove('hidden');
-            initializeWebSocket();
-        });
+        socket.onclose = () => {
+          console.log("WebSocket connection closed.");
+        };
 
-        // Audio Mute Toggle
-        let isMuted = false;
-        audioButton.addEventListener('click', () => {
-            isMuted = !isMuted;
-            audioButton.textContent = isMuted ? 'Unmute' : 'Mute';
-            // TODO: Implement actual mute functionality
-        });
+        // Initialize media recorder for audio
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
 
-        // Chat Toggle
-        chatToggleButton.addEventListener('click', () => {
-            chatWindow.classList.toggle('hidden');
-        });
+        mediaRecorder.onstop = sendAudio;
+        mediaRecorder.start();
+        intervalId = setInterval(() => {
+          mediaRecorder.stop();
+          mediaRecorder.start();
+        }, 5000); // Capture audio every 5 seconds
 
-        // Send Message
-        sendButton.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
+        startButton.disabled = true;
+        stopButton.disabled = false;
+      } catch (err) {
+        console.error("Error accessing media devices:", err);
+      }
+    }
 
-        function sendMessage() {
-            const message = chatInput.value.trim();
-            if (message) {
-                // Add message to chat window
-                const messageElement = document.createElement('div');
-                messageElement.textContent = `You: ${message}`;
-                messageElement.classList.add('p-2', 'bg-gray-100', 'rounded', 'mb-2');
-                chatMessages.appendChild(messageElement);
+    // Stop the recording
+    function stopRecording() {
+      clearInterval(intervalId);
+      mediaRecorder.stop();
+      startButton.disabled = false;
+      stopButton.disabled = true;
+    }
 
-                // Send via WebSocket if connected
-                if (socket && socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({
-                        type: 'chat',
-                        message: message
-                    }));
-                }
+    // Send captured audio to backend via WebSocket
+    async function sendAudio() {
+      const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+      console.log("Sending audio data to backend...");
 
-                // Clear input
-                chatInput.value = '';
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
+      try {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(audioBlob);
+          console.log("Audio sent to server.");
+          audioChunks = []; // Clear audio chunks for the next recording
+          
         }
+      } catch (err) {
+        console.error("Error sending audio:", err);
+      }
+    }
 
-        // End Meeting
-        endButton.addEventListener('click', () => {
-            if (socket) socket.close();
-            meetingPage.classList.add('hidden');
-            startPage.classList.remove('hidden');
+    // Handle the response from the backend for audio detection
+    // async function handleAudioDetection(response) {
+    //  
+    // console.log(response)
+    // }
+
+    // Capture video frames and send to backend for NSFW detection
+    async function captureFrame() {
+      const context = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
+      const formData = new FormData();
+      formData.append("file", blob, "frame.jpg");
+
+      try {
+        const response = await fetch("http://localhost:8000/detect-nsfw", {
+          method: "POST",
+          body: formData,
         });
-
-        // Initialize WebSocket Connection
-        function initializeWebSocket() {
-            socket = new WebSocket('ws://localhost:8080/meeting');
-
-            socket.onopen = () => {
-                console.log('Connected to meeting server');
-                // Send join meeting signal
-                socket.send(JSON.stringify({
-                    type: 'join',
-                    timestamp: new Date().toISOString()
-                }));
-            };
-
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                
-                switch(data.type) {
-                    case 'chat':
-                        const chatMsg = document.createElement('div');
-                        chatMsg.textContent = `Participant: ${data.message}`;
-                        chatMsg.classList.add('p-2', 'bg-blue-100', 'rounded', 'mb-2');
-                        chatMessages.appendChild(chatMsg);
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                        break;
-                    
-                    case 'participant-update':
-                        // Handle participant join/leave notifications
-                        break;
-                }
-            };
-
-            socket.onerror = (error) => {
-                console.error('WebSocket Error:', error);
-                alert('Connection error. Please try again.');
-            };
-
-            socket.onclose = () => {
-                console.log('Disconnected from meeting server');
-            };
+        const data = await response.json();
+        
+        if (data === "nsfw") {
+          statusDiv.textContent = "⚠️ NSFW Video Content Detected!";
+          statusDiv.style.color = "red";
+        } else {
+          statusDiv.textContent = "✅ Video Content is Safe";
+          statusDiv.style.color = "green";
         }
-    </script>
+      } catch (err) {
+        console.error("Error detecting NSFW in video:", err);
+      }
+    }
+
+    // Start the detection process
+    function startDetection() {
+      setInterval(captureFrame, 2000); // Capture video frames every 2 seconds
+    }
+
+    // Event listeners for buttons
+    startButton.addEventListener("click", startStream);
+    stopButton.addEventListener("click", stopRecording);
+
+    // Initialize the detection
+    startDetection();
+  </script>
 </body>
 </html>
