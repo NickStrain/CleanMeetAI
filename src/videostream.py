@@ -1,129 +1,60 @@
-import cv2
-import threading
-from fastapi import FastAPI, Request,BackgroundTasks,WebSocket,WebSocketDisconnect,UploadFile,File
+import cv2 
 import numpy as np
-import asyncio
-from PIL import Image
-from fastapi.responses import StreamingResponse
-import json
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-import sys
-import io
-import soundfile as sf
-# from videostream import generate_frames
-from model_pipline import nsfwModel,ConnectionManager
-from transformers import pipeline
-import time
-app = FastAPI()
-buffer_manager =  ConnectionManager()
-origins = [
+import torch 
+import pyvirtualcam 
+from PIL import Image 
+from model_pipline import nsfwModel
+import threading 
 
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
-    "http://localhost",
-    "http://localhost:80",
-]
+nsfw_model = nsfwModel()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def detect_nsfw(frame):
+    # frame =  Image.fromarray(frame)
+    out = nsfw_model.predict(frame)
+    return out 
 
+def overlay_prediction(frame, label):
+    """ Overlay NSFW detection result on the frame """
+    if label == "nsfw":
+        color = (0, 0, 255)  # Red warning text
+        text = "Offensive Video Detected!"
+        cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 0, 255), -1)  # Red box at top
+    else:
+        color = (0, 255, 0)  # Green safe text
+        text = "Video is Safe"
+        cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 255, 0), -1)  # Green box at top
+    cv2.putText(frame, text, (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+    return frame
 
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+cap = cv2.VideoCapture(0) 
 
-class CameraManager:
-    def __init__(self):
-        self.camera = cv2.VideoCapture(0)
-        if not self.camera.isOpened():
-            raise RuntimeError("Could not open camera.")
-        self.lock = threading.Lock()
-        self.latest_frame = None
-        self.running = True
-        self.thread = threading.Thread(target=self._capture_frames, daemon=True)
-        self.thread.start()
+with pyvirtualcam.Camera(width=640, height=480, fps=60, print_fps=True) as cam:
+    print("Virtual Camera started...",flush = True)
 
-    def _capture_frames(self):
-        while self.running:
-            success, frame = self.camera.read()
-            if success:
-                with self.lock:
-                    self.latest_frame = frame
-
-    def get_frame(self):
-        with self.lock:
-            return self.latest_frame
-
-    def stop(self):
-        self.running = False
-        self.thread.join()
-        self.camera.release()
-
-# Create a shared camera manager instance
-camera_manager = CameraManager()
-
-def generate_cam_frame():
-   
     while True:
-        frame = camera_manager.get_frame()
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
-        yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            
-def video_pre(model):
-    model = model
-    while True:
-        frame = camera_manager.get_frame()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame =  Image.fromarray(frame)
-        out = model.predict(frame)
-        json_output = json.dumps({"prediction": out})
-        sys.stdout.flush()
-        yield f"{json_output}\n"
-        # time.sleep(1) 
+        ret, frame = cap.read()
+        frame_rgb_out = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+      
+        label = detect_nsfw(frame_rgb_out)
+        frame = overlay_prediction(frame_rgb_out, label)
+        cam.send(frame)
+        print(label,flush=True)
+        
+        
 
 
-@app.get("/")
-def index(request:Request):
-    context = {"request":request}
-    return templates.TemplateResponse("index.html",context=context)
+cap.release()
+cv2.destroyAllWindows()
+# import colorsys
+# import numpy as np
+# import pyvirtualcam
 
-@app.get("/video")
-def video():
-    return StreamingResponse(generate_cam_frame(), media_type='multipart/x-mixed-replace; boundary=frame')
-
-@app.get("/output")
-async def video_pre_endpoint():
-    return StreamingResponse(video_pre(nsfwModel()), media_type="text/event-stream")
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    for i in video_pre(nsfwModel()):
-        out = json.dumps({"pre":i})
-        await websocket.send_text(out)
-        await asyncio.sleep(1)
-
-speech2text_model = pipeline("automatic-speech-recognition", model="facebook/wav2vec2-large-960h")
-
-
-# for i in pre():
-#     print("sdf",i)
-#     time.sleep(2)
-
-
-
-# camera =cv2.VideoCapture('udp://127.0.0.1:80', cv2.CAP_FFMPEG) 
-
-# while True:
-#     success,frame = camera.read()
-#     print(frame)
-
-
+# with pyvirtualcam.Camera(width=1920, height=1080, fps=30, print_fps=True) as cam:
+#     print(f'Using virtual camera: {cam.device}')
+#     frame = np.zeros((cam.height, cam.width, 3), np.uint8)  # RGB
+#     while True:
+#         h, s, v = (cam.frames_sent % 100) / 100, 1.0, 1.0
+#         r, g, b = colorsys.hsv_to_rgb(h, s, v)
+#         frame[:] = (r * 255, g * 255, b * 255)
+#         cam.send(frame)
+#         cam.sleep_until_next_frame()
