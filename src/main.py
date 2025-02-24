@@ -42,6 +42,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 nsfw_model = nsfwModel()
 pipe = pipeline("automatic-speech-recognition", model="openai/whisper-small.en")
 text_cl_model= Textclassifier()
+chat_cla = Textclassifier()
 
 def detect_nsfw_video(image: Image.Image) -> dict:
     image = image.convert("RGB")
@@ -123,7 +124,7 @@ async def websocket_audio(websocket: WebSocket):
 
             # Run text classification for offensive content detection
             pred = text_cl_model.pred(transcript["text"])
-            print(pred[0]['label'],flush=True)
+            # print(pred[0]['label'],flush=True)
 
             await websocket.send_text(pred[0]['label'],)
             # Send response back to client if needed (for real-time updates)
@@ -133,3 +134,35 @@ async def websocket_audio(websocket: WebSocket):
     
     finally:
         await websocket.close()
+
+active_connections = []
+
+@app.websocket("/wschat")
+async def chat_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    active_connections.append(websocket)
+    
+    try:
+        while True:
+            # Receive message from client
+            data = await websocket.receive_json()
+            
+            if data["type"] == "chat":
+                message = data["message"]
+                pred = chat_cla.pred(message)
+                # print("sdf1",pred[0]['label'],flush=True)
+                # Check for toxic content
+                if pred[0]['label']=='toxic':
+                    print("sdf",pred[0]['label'],flush=True)
+                    await websocket.send_text(pred[0]['label'])
+                else:
+                    # await websocket.send_text(pred[0]['label'])
+                    await websocket.send_text(message)
+                    
+    except WebSocketDisconnect:
+        active_connections.remove(websocket)
+        logger.info("Client disconnected")
+    except Exception as e:
+        logger.error(f"Error in WebSocket connection: {e}")
+        if websocket in active_connections:
+            active_connections.remove(websocket)
