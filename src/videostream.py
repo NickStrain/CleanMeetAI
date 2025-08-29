@@ -14,17 +14,41 @@ def detect_nsfw(frame):
     return out 
 
 def overlay_prediction(frame, label):
-    """ Overlay NSFW detection result on the frame """
+    """Overlay NSFW detection result on the frame in the bottom-left corner."""
+    overlay = frame.copy()
+    height, width, _ = frame.shape
+
     if label == "nsfw":
         color = (0, 0, 255)  # Red warning text
-        text = "Offensive Video Detected!"
-        cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 0, 255), -1)  # Red box at top
+        text = "NSFW Content Detected!"
     else:
         color = (0, 255, 0)  # Green safe text
-        text = "Video is Safe"
-        cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 255, 0), -1)  # Green box at top
-    cv2.putText(frame, text, (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+        text = "ɘʇɒƧ ƨi oɘbiV $$$$$$"
+
+    # Define text properties
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.8
+    thickness = 2
+    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+
+    # Position: Bottom-left corner with padding
+    x, y = 30, height - 30
+
+    # Add semi-transparent rectangle as background
+    rect_w, rect_h = text_size[0] + 20, text_size[1] + 20
+    cv2.rectangle(overlay, (x - 10, y - rect_h), (x + rect_w, y), color, -1)
+    
+    # Blend overlay with transparency
+    alpha = 0.5  # Transparency level
+    frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+
+    # Draw the text with a shadow effect
+    shadow_offset = 2
+    cv2.putText(frame, text, (x + shadow_offset, y + shadow_offset), font, font_scale, (0, 0, 0), thickness + 1)
+    cv2.putText(frame, text, (x, y), font, font_scale, (255, 255, 255), thickness)
+
     return frame
+
 
 cap = cv2.VideoCapture(0) 
 

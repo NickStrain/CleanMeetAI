@@ -14,16 +14,19 @@ def detect_nsfw(frame, result_queue):
         label = nsfw_model.predict(frame)
     result_queue.put(label)
 
+def apply_blur(frame):
+    """Applies a Gaussian blur for NSFW content"""
+    return cv2.GaussianBlur(frame, (99, 99), 30)    
+
 def overlay_prediction(frame, label):
     """Overlay NSFW detection result on the frame"""
     if label == "nsfw":
+        frame = apply_blur(frame)  # Blur entire frame for NSFW
         color = (0, 0, 255)  # Red warning text
-        text = "Offensive Video Detected!"
-        cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 0, 255), -1)
+        text = "NSFW Content Detected!"
     else:
         color = (0, 255, 0)  # Green safe text
         text = "Video is Safe"
-        cv2.rectangle(frame, (0, 0), (frame.shape[1], 100), (0, 255, 0), -1)
     
     cv2.putText(frame, text, (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
     return frame

@@ -4,6 +4,13 @@
 It monitors **video, audio, and text streams** to detect and prevent **NSFW content** or **vulgarity**, ensuring safe and professional online meetings.  
 
 ---
+![Clean Meet AI Demo](assets/arch1.jpeg)
+![Clean Meet AI Demo](assets/videosc1.png)
+![Clean Meet AI Demo](assets/videosc2.png)
+![Clean Meet AI Demo](assets/textsc1.png)
+![Clean Meet AI Demo](assets/text2.png)
+![Clean Meet AI Demo](assets/audio1.png)
+![Clean Meet AI Demo](assets/audio2.png)
 
 ## ✨ Features
 
@@ -14,7 +21,7 @@ It monitors **video, audio, and text streams** to detect and prevent **NSFW cont
 
 - 🔗 **Integration Layer**  
   - Plug & play integration with any video conferencing system (Zoom, Google Meet, MS Teams, etc.).  
-  - Works seamlessly with existing workflows.  
+  ![Integration Platforms](assets\googleMeet_ing.jpeg)
 
 - ⚡ **Multi-Modal Detection**  
   - **Video:** NSFW or inappropriate visual content.  

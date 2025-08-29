@@ -121,7 +121,7 @@ async def websocket_audio(websocket: WebSocket):
 
             # Process audio with Whisper (speech-to-text)
             transcript = pipe(audio_data)
-
+            print(transcript["text"],flush=True)
             # Run text classification for offensive content detection
             pred = text_cl_model.pred(transcript["text"])
             # print(pred[0]['label'],flush=True)
