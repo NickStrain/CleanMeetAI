@@ -13,13 +13,13 @@ Ensures privacy-first processing by handling everything in real-time without sto
 ---
 <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
 
-  <img src="assets/arch1.jpeg" alt="Architecture" width="200"/>
-  <img src="assets/videosc1.png" alt="Video Scan 1" width="200"/>
-  <img src="assets/videosc2.png" alt="Video Scan 2" width="200"/>
-  <img src="assets/textsc1.png" alt="Text Scan 1" width="200"/>
-  <img src="assets/text2.png" alt="Text Scan 2" width="200"/>
-  <img src="assets/audio1.png" alt="Audio Scan 1" width="200"/>
-  <img src="assets/audio2.png" alt="Audio Scan 2" width="200"/>
+  <img src="assets/arch1.jpeg" alt="Architecture" width="500"/>
+  <img src="assets/videosc1.png" alt="Video Scan 1" width="500"/>
+  <img src="assets/videosc2.png" alt="Video Scan 2" width="500"/>
+  <img src="assets/textsc1.png" alt="Text Scan 1" width="500"/>
+  <img src="assets/text2.png" alt="Text Scan 2" width="500"/>
+  <img src="assets/audio1.png" alt="Audio Scan 1" width="500"/>
+  <img src="assets/audio2.png" alt="Audio Scan 2" width="500"/>
 
 </div>
 ## ✨ Features
